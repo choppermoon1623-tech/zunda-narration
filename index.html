@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ずんだナレーションメーカー | 教材用ナレーション生成ツール</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --mochi:#FAF7F0;        /* もち */
+    --mochi-deep:#F1ECDF;
+    --edamame:#79C257;      /* 枝豆 */
+    --edamame-light:#E7F3DC;
+    --zunda-deep:#2F5D24;   /* ずんだ餡 */
+    --ink:#22301B;
+    --kinako:#E9B949;       /* きなこ（差し色） */
+    --line:#D8D2C2;
+    --error:#C0492F;
+    --radius:18px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{font-size:16px;}
+  body{
+    font-family:"Zen Maru Gothic", "Hiragino Maru Gothic ProN", sans-serif;
+    font-weight:500;
+    background:var(--mochi);
+    color:var(--ink);
+    line-height:1.7;
+    min-height:100vh;
+  }
+  .wrap{max-width:720px;margin:0 auto;padding:32px 20px 80px;}
+
+  /* ===== header ===== */
+  header{display:flex;align-items:center;gap:14px;margin-bottom:8px;}
+  .pod{flex:0 0 auto;}
+  h1{font-size:1.55rem;font-weight:900;letter-spacing:.02em;line-height:1.3;}
+  h1 span{color:var(--zunda-deep);}
+  .lead{color:#5C6650;font-size:.92rem;margin:6px 0 28px;}
+
+  /* ===== card ===== */
+  .card{
+    background:#fff;border:1.5px solid var(--line);
+    border-radius:var(--radius);padding:22px;margin-bottom:18px;
+  }
+  label.head{display:block;font-weight:700;font-size:.95rem;margin-bottom:8px;}
+  textarea{
+    width:100%;min-height:120px;resize:vertical;
+    font-family:inherit;font-size:1rem;line-height:1.8;
+    border:1.5px solid var(--line);border-radius:12px;padding:14px;
+    background:var(--mochi);color:var(--ink);
+  }
+  textarea:focus{outline:3px solid var(--edamame);outline-offset:1px;border-color:var(--edamame);}
+  .meta{display:flex;justify-content:space-between;align-items:center;margin-top:8px;flex-wrap:wrap;gap:8px;}
+  .count{font-family:"IBM Plex Mono",monospace;font-size:.82rem;color:#6B7460;}
+  .count.warn{color:var(--error);font-weight:700;}
+  .hint{font-size:.8rem;color:#8A9180;}
+
+  .controls{display:flex;gap:12px;margin-top:16px;flex-wrap:wrap;align-items:stretch;}
+  select{
+    flex:1 1 200px;font-family:inherit;font-size:.95rem;font-weight:700;
+    border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;
+    background:#fff;color:var(--ink);cursor:pointer;
+  }
+  select:focus{outline:3px solid var(--edamame);outline-offset:1px;}
+  button.go{
+    flex:1 1 200px;border:none;border-radius:12px;padding:14px 18px;
+    font-family:inherit;font-size:1.02rem;font-weight:900;letter-spacing:.04em;
+    background:var(--zunda-deep);color:#fff;cursor:pointer;
+    transition:transform .08s ease, background .15s ease;
+  }
+  button.go:hover{background:#3B7330;}
+  button.go:active{transform:scale(.98);}
+  button.go:disabled{background:#A9B49E;cursor:not-allowed;}
+  button.go:focus-visible{outline:3px solid var(--kinako);outline-offset:2px;}
+
+  /* ===== speech bubble result ===== */
+  .bubble{
+    position:relative;background:var(--edamame-light);
+    border:2px solid var(--edamame);border-radius:24px;
+    padding:24px;margin:30px 0 18px;display:none;
+  }
+  .bubble::before{
+    content:"";position:absolute;top:-16px;left:46px;
+    width:26px;height:26px;background:var(--edamame-light);
+    border-left:2px solid var(--edamame);border-top:2px solid var(--edamame);
+    transform:rotate(45deg);border-radius:4px 0 0 0;
+  }
+  .bubble.show{display:block;animation:pop .25s ease;}
+  @keyframes pop{from{transform:scale(.97);opacity:0;}to{transform:scale(1);opacity:1;}}
+  .bubble .said{font-weight:700;font-size:.95rem;color:var(--zunda-deep);margin-bottom:4px;}
+  .bubble .text{font-size:1rem;margin-bottom:14px;word-break:break-word;}
+  audio{width:100%;margin-bottom:14px;}
+  .dl{display:flex;gap:10px;flex-wrap:wrap;}
+  .dl a, .dl button{
+    display:inline-flex;align-items:center;gap:6px;
+    font-family:inherit;font-weight:700;font-size:.9rem;text-decoration:none;
+    border:1.5px solid var(--zunda-deep);color:var(--zunda-deep);
+    background:#fff;border-radius:999px;padding:9px 18px;cursor:pointer;
+  }
+  .dl a:hover, .dl button:hover{background:var(--zunda-deep);color:#fff;}
+  .dl a:focus-visible, .dl button:focus-visible{outline:3px solid var(--kinako);outline-offset:2px;}
+
+  /* ===== loading: edamame pod ===== */
+  .loading{display:none;align-items:center;gap:14px;margin:26px 4px 8px;}
+  .loading.show{display:flex;}
+  .beans{display:flex;gap:7px;background:#D9EDC9;border:2px solid var(--edamame);
+    border-radius:999px;padding:8px 14px;}
+  .beans i{width:14px;height:14px;border-radius:50%;background:var(--edamame);
+    animation:beat 1.1s infinite ease-in-out;}
+  .beans i:nth-child(2){animation-delay:.18s;}
+  .beans i:nth-child(3){animation-delay:.36s;}
+  @keyframes beat{0%,100%{transform:scale(.7);opacity:.5;}50%{transform:scale(1);opacity:1;}}
+  @media (prefers-reduced-motion: reduce){
+    .beans i{animation:none;opacity:1;}
+    .bubble.show{animation:none;}
+  }
+  .loading p{font-size:.92rem;font-weight:700;color:var(--zunda-deep);}
+
+  .error-box{
+    display:none;margin-top:18px;padding:14px 18px;border-radius:12px;
+    background:#FBEAE5;border:1.5px solid var(--error);color:var(--error);
+    font-size:.92rem;font-weight:700;
+  }
+  .error-box.show{display:block;}
+
+  /* ===== history ===== */
+  .history h2{font-size:1.05rem;font-weight:900;margin-bottom:10px;}
+  .history ul{list-style:none;}
+  .history li{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    padding:10px 4px;border-bottom:1px dashed var(--line);font-size:.9rem;
+  }
+  .history li .t{flex:1 1 200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .history li a{color:var(--zunda-deep);font-weight:700;text-decoration:none;}
+  .history li a:hover{text-decoration:underline;}
+  .history .empty{color:#8A9180;font-size:.88rem;padding:6px 4px;}
+
+  /* ===== credit ===== */
+  footer{margin-top:34px;font-size:.82rem;color:#6B7460;}
+  footer .credit{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    background:var(--mochi-deep);border-radius:12px;padding:12px 16px;margin-bottom:12px;
+  }
+  footer code{
+    font-family:"IBM Plex Mono",monospace;background:#fff;
+    border:1px solid var(--line);border-radius:6px;padding:2px 8px;color:var(--ink);
+  }
+  footer button{
+    font-family:inherit;font-size:.78rem;font-weight:700;cursor:pointer;
+    border:1.5px solid var(--zunda-deep);color:var(--zunda-deep);background:#fff;
+    border-radius:999px;padding:4px 12px;
+  }
+  footer button:hover{background:var(--zunda-deep);color:#fff;}
+  footer a{color:var(--zunda-deep);}
+  footer p{margin-bottom:4px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <!-- 枝豆ロゴ（オリジナルSVG） -->
+    <svg class="pod" width="52" height="52" viewBox="0 0 52 52" aria-hidden="true">
+      <path d="M10 38 C4 26 12 10 26 8 C42 6 50 18 44 32 C39 44 18 50 10 38 Z"
+            fill="#D9EDC9" stroke="#2F5D24" stroke-width="2.5"/>
+      <circle cx="19" cy="27" r="6" fill="#79C257" stroke="#2F5D24" stroke-width="2"/>
+      <circle cx="31" cy="23" r="6" fill="#79C257" stroke="#2F5D24" stroke-width="2"/>
+      <circle cx="38" cy="32" r="5" fill="#79C257" stroke="#2F5D24" stroke-width="2"/>
+    </svg>
+    <h1>ずんだ<span>ナレーション</span>メーカー</h1>
+  </header>
+  <p class="lead">テキストを入力すると、ずんだもんの声で読み上げて WAV / MP3 をダウンロードできます。教材のナレーションづくりにどうぞ。</p>
+
+  <div class="card">
+    <label class="head" for="script">読み上げるテキスト</label>
+    <textarea id="script" placeholder="例）今日は、はんだごての正しい使い方を勉強するのだ！"></textarea>
+    <div class="meta">
+      <span class="count" id="count">0 文字</span>
+      <span class="hint">長文はエラーになることがあります。1回 200 文字くらいまでがおすすめ。</span>
+    </div>
+    <div class="controls">
+      <select id="style" aria-label="声のスタイル">
+        <option value="3" selected>ずんだもん（ノーマル）</option>
+        <option value="1">ずんだもん（あまあま）</option>
+        <option value="7">ずんだもん（ツンツン）</option>
+        <option value="22">ずんだもん（ささやき）</option>
+        <option value="38">ずんだもん（ヒソヒソ）</option>
+      </select>
+      <button class="go" id="go">音声をつくる</button>
+    </div>
+  </div>
+
+  <div class="loading" id="loading" role="status">
+    <div class="beans"><i></i><i></i><i></i></div>
+    <p id="loadingText">ずんだもんが準備中なのだ…</p>
+  </div>
+
+  <div class="error-box" id="errorBox"></div>
+
+  <div class="bubble" id="bubble">
+    <p class="said" id="speakerName">VOICEVOX:ずんだもん</p>
+    <p class="text" id="saidText"></p>
+    <audio id="player" controls></audio>
+    <div class="dl">
+      <a id="dlWav" href="#" target="_blank" rel="noopener">⬇ WAV をダウンロード</a>
+      <a id="dlMp3" href="#" target="_blank" rel="noopener">⬇ MP3 をダウンロード</a>
+    </div>
+  </div>
+
+  <div class="card history">
+    <h2>このページで作った音声</h2>
+    <ul id="historyList"></ul>
+    <p class="empty" id="historyEmpty">まだありません。ページを再読み込みすると履歴は消えます。</p>
+  </div>
+
+  <footer>
+    <div class="credit">
+      <span>音声を使うときはクレジット表記をお願いします：</span>
+      <code id="creditText">VOICEVOX:ずんだもん</code>
+      <button id="copyCredit">コピー</button>
+    </div>
+    <p>音声合成：<a href="https://voicevox.hiroshiba.jp/" target="_blank" rel="noopener">VOICEVOX</a>／キャラクター：<a href="https://zunko.jp/" target="_blank" rel="noopener">東北ずん子・ずんだもんプロジェクト</a>　それぞれの利用規約をご確認ください。</p>
+    <p>このツールは非公式の <a href="https://voicevox.su-shiki.com/su-shikiapis/ttsquest/" target="_blank" rel="noopener">WEB版VOICEVOX API（tts.quest）</a> を利用しています。混雑時は生成に時間がかかることがあります。</p>
+  </footer>
+</div>
+
+<script>
+const API = "https://api.tts.quest/v3/voicevox/synthesis";
+const $ = (id) => document.getElementById(id);
+const scriptEl = $("script"), goBtn = $("go"), styleEl = $("style");
+const loading = $("loading"), loadingText = $("loadingText");
+const bubble = $("bubble"), errorBox = $("errorBox");
+let busy = false;
+
+// 文字カウント
+scriptEl.addEventListener("input", () => {
+  const n = scriptEl.value.length;
+  const c = $("count");
+  c.textContent = n + " 文字";
+  c.classList.toggle("warn", n > 200);
+});
+
+function showError(msg){
+  errorBox.textContent = msg;
+  errorBox.classList.add("show");
+}
+function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+goBtn.addEventListener("click", async () => {
+  if (busy) return;
+  const text = scriptEl.value.trim();
+  errorBox.classList.remove("show");
+  bubble.classList.remove("show");
+  if (!text){ showError("テキストを入力してください。"); return; }
+
+  busy = true;
+  goBtn.disabled = true;
+  goBtn.textContent = "生成中…";
+  loading.classList.add("show");
+  loadingText.textContent = "ずんだもんが台本を読んでいるのだ…";
+
+  try {
+    const speaker = styleEl.value;
+    const res = await fetch(`${API}?speaker=${speaker}&text=${encodeURIComponent(text)}`);
+    const data = await res.json();
+
+    if (!data.success){
+      const reasons = {
+        textRequired: "テキストが空のようです。",
+        textTooLong: "テキストが長すぎます。短く分けて生成してください。",
+        invalidSpeaker: "話者の指定が正しくありません。",
+        notEnoughPoints: "APIの利用ポイントが不足しています。"
+      };
+      let msg = reasons[data.errorMessage] || "生成に失敗しました（" + (data.errorMessage || "不明なエラー") + "）。";
+      if (data.retryAfter) msg = "ただいま混み合っています。" + Math.ceil(data.retryAfter) + " 秒ほど待ってからもう一度お試しください。";
+      showError(msg);
+      return;
+    }
+
+    // 音声完成までポーリング
+    loadingText.textContent = "声を合成しているのだ…（混雑時は1分ほどかかります）";
+    let ready = false;
+    for (let i = 0; i < 90; i++){
+      await sleep(1500);
+      try {
+        const st = await (await fetch(data.audioStatusUrl)).json();
+        if (st.isAudioError){ showError("音声の合成に失敗しました。テキストを変えてお試しください。"); return; }
+        if (st.isAudioReady){ ready = true; break; }
+      } catch(e){ /* 一時的な失敗は無視して再試行 */ }
+    }
+    if (!ready){ showError("時間内に合成が完了しませんでした。少し待ってからもう一度お試しください。"); return; }
+
+    // 結果表示
+    $("speakerName").textContent = data.speakerName || "VOICEVOX:ずんだもん";
+    $("saidText").textContent = "「" + text + "」";
+    $("player").src = data.mp3StreamingUrl;
+    $("dlWav").href = data.wavDownloadUrl;
+    $("dlMp3").href = data.mp3DownloadUrl;
+    bubble.classList.add("show");
+    addHistory(text, data);
+  } catch (e){
+    showError("通信エラーです。ネットワーク（校内フィルタリング含む）をご確認ください。");
+  } finally {
+    busy = false;
+    goBtn.disabled = false;
+    goBtn.textContent = "音声をつくる";
+    loading.classList.remove("show");
+  }
+});
+
+// 履歴（ページを開いている間だけ）
+function addHistory(text, data){
+  $("historyEmpty").style.display = "none";
+  const li = document.createElement("li");
+  const label = text.length > 24 ? text.slice(0, 24) + "…" : text;
+  li.innerHTML =
+    `<span class="t">${escapeHtml(label)}</span>` +
+    `<a href="${data.wavDownloadUrl}" target="_blank" rel="noopener">WAV</a>` +
+    `<a href="${data.mp3DownloadUrl}" target="_blank" rel="noopener">MP3</a>`;
+  $("historyList").prepend(li);
+}
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+}
+
+// クレジットコピー
+$("copyCredit").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText("VOICEVOX:ずんだもん");
+    $("copyCredit").textContent = "コピーしました！";
+    setTimeout(() => $("copyCredit").textContent = "コピー", 1600);
+  } catch(e){ /* http環境などでは失敗することがある */ }
+});
+
+// Enter+Ctrlで生成
+scriptEl.addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") goBtn.click();
+});
+</script>
+</body>
+</html>
